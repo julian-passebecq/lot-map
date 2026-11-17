@@ -216,12 +216,14 @@ test('the painted map has its ground, its words and its lit stations where the d
   expect(warm(running, 127, 346, 30)).toBe(false)
 })
 
-test('what never moves is painted once a drawing, and the frames come out as if every shape were painted each time', () => {
-  const now = 1_000_000
-  // An animation of nothing makes every shape one that moves, so the painter paints the drawing whole, frame after frame.
-  const nothing = { kind: 'value', attr: 'nothing', values: [0], keyTimes: undefined, begin: 0, dur: 1, repeat: 1, freeze: false }
-  const times = [0, 333, 1500, 45_000]
-  for (const options of [{ theme: 'dark', background: 'transparent' }, { theme: 'dark' }, { theme: 'light' }]) {
+for (const options of [{ theme: 'dark', background: 'transparent' }, { theme: 'dark' }, { theme: 'light' }]) {
+  // Painting and comparing whole frames is synchronous CPU work, not time advanced by the mock clock.
+  // Give each palette its own budget so a busy runner can still check every pixel and frame.
+  test(`what never moves is painted once a drawing, and the frames come out as if every shape were painted each time (${options.theme}, ${options.background ?? 'solid'})`, { timeoutMs: 60_000 }, () => {
+    const now = 1_000_000
+    // An animation of nothing makes every shape one that moves, so the painter paints the drawing whole, frame after frame.
+    const nothing = { kind: 'value', attr: 'nothing', values: [0], keyTimes: undefined, begin: 0, dur: 1, repeat: 1, freeze: false }
+    const times = [0, 333, 1500, 45_000]
     const scene = parseMap(drawMap(BUSY(now), now, setupFrom(options)))
     const whole = { ...scene, shapes: scene.shapes.map(s => ({ ...s, animations: [...s.animations, nothing] })) } as typeof scene
     // All of one drawing's frames, then the other's: the painter keeps the still shapes of one drawing at a time.
@@ -239,8 +241,8 @@ test('what never moves is painted once a drawing, and the frames come out as if 
       }
       expect(worst).toBeLessThanOrEqual(2)
     }
-  }
-})
+  })
+}
 
 
 // A reader for the PNGs the mod makes, written apart from the writer, straight from RFC 1951: one IDAT,
